@@ -43,9 +43,9 @@ function onInput(event: Event, index: number) {
     }
 
     if (values.value.every((value) => value !== '')) {
+        emit('complete', Number(values.value.join('')))
         values.value = Array(6).fill('')
         inputs.value[0].focus()
-        emit('complete', Number(values.value.join('')))
     }
 }
 
