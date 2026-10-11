@@ -20,7 +20,7 @@ impl JwtData {
             .duration_since(UNIX_EPOCH)
             .expect("system clock is before Unix epoch")
             .as_secs() as usize
-            + 24 * 60 * 60;
+            + 8 * 60 * 60;
 
         Self {
             id: client_id.unwrap_or(usize::MAX),
