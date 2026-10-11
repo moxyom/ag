@@ -112,7 +112,7 @@ impl ClientState {
 pub struct RoomState {
     pub room: Room,
     pub joinable: bool,
-    pub clients: Vec<ClientState>
+    pub clients: Vec<ClientState>,
 }
 
 impl RoomState {
@@ -122,6 +122,10 @@ impl RoomState {
             joinable: true,
             clients: Vec::new(),
         }
+    }
+
+    pub fn current_vote_id(&self) -> usize {
+        self.room.current_vote.as_ref().map(|v| v.id).unwrap_or(0)
     }
 }
 

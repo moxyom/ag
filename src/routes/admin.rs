@@ -64,10 +64,10 @@ async fn handle_socket(
     // send initial vote
     let room_state = room_state_lock.read().await;
     if let Some(current_vote) = &room_state.room.current_vote {
-        send(&mut sender, encode_vote(current_vote)).await;
+        let _ = send(&mut sender, encode_vote(current_vote)).await;
     }
-    send(&mut sender, encode_stats(&room_state)).await;
-    send(&mut sender, encode_incription_satus(room_state.joinable)).await;
+    let _ = send(&mut sender, encode_stats(&room_state)).await;
+    let _ = send(&mut sender, encode_incription_satus(room_state.joinable)).await;
     drop(room_state);
 
     loop {

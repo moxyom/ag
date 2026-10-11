@@ -10,9 +10,7 @@ use futures::StreamExt;
 use tokio::sync::RwLock;
 
 use crate::{
-    jwt::JwtData,
-    packets::{ClientIn, ParsedMessage, parse},
-    state::{AppState, RoomState},
+    jwt::JwtData, packets::{ClientIn, ParsedMessage, encode_vote, parse, send}, state::{AppState, RoomState},
 };
 
 static CLIENT_HTML: &[u8] = include_bytes!("../../frontend/dist/client/client.html.gz");
@@ -49,10 +47,21 @@ async fn handle_socket(
     client_id: usize,
     room_state_lock: Arc<RwLock<RoomState>>,
 ) {
-    let (sender, mut receiver) = socket.split();
+    let (mut sender, mut receiver) = socket.split();
+
+    let mut room_state = room_state_lock.write().await;
+    
+    // send initial vote only if not answered
+    if let Some(current_vote) = &room_state.room.current_vote {
+        let current_vote_id = room_state.current_vote_id();
+        let client_last_vote_id = room_state.clients[client_id].last_vote_id.load(Ordering::Relaxed);
+
+        if current_vote_id > client_last_vote_id {
+            let _ = send(&mut sender, encode_vote(current_vote)).await;
+        }
+    }
 
     // register sender
-    let mut room_state = room_state_lock.write().await;
     room_state.clients[client_id].sender = Some(sender);
     drop(room_state);
 
@@ -85,21 +94,16 @@ async fn handle_socket(
         let room_state = room_state_lock.read().await;
 
         // compare last client vote to current vote
-        let current_vote_id = room_state
-            .room
-            .current_vote
-            .as_ref()
-            .map(|v| v.id)
-            .unwrap_or(0);
+        let current_vote_id = room_state.current_vote_id();
         let client_state = &room_state.clients[client_id];
 
-        // set new user_last_vote_id and get the old value with atomic unicity
-        let user_last_vote_id = client_state
+        // set new client_last_vote_id and get the old value with atomic unicity
+        let client_last_vote_id = client_state
             .last_vote_id
             .swap(current_vote_id, Ordering::Relaxed);
 
         // ignore if the vote has already been answered by client
-        if user_last_vote_id >= current_vote_id {
+        if client_last_vote_id >= current_vote_id {
             continue;
         }
 
@@ -112,6 +116,6 @@ async fn handle_socket(
     println!("client disconnected");
 
     // removing sender
-    let mut room_state = (*room_state_lock).write().await;
+    let mut room_state = room_state_lock.write().await;
     room_state.clients[client_id].sender = None;
 }
