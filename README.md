@@ -30,8 +30,14 @@ la certitude qu'il sera supprimé au moment où vous fermerez votre navigateur.
  
 ## Utilisation
 
-**Créer une séance**
+**Créer une séance**<br>
 - Aller sur [ag.moxyom.com/admin](https://ag.moxyom.com/amin), cliquer sur « Créer une séance ».
 - Partagez aux participants le code en haut à gauche de l'écran
 - Cliquez sur le bouton en haut à droite pour clôturer les inscriptions.
+- Vous pouvez maintenant soumettre des votes
+- Une fois la séance terminée, clickez sur « Terminer la séance » pour supprimer toutes les informations sur le serveur et sur le navigateur des participants
 
+**Rejoindre une séance**<br>
+- Aller sur [ag.moxyom.com](https://ag.moxyom.com), rentrez le code de séance.
+- Lorsqu'un vote est soumis, clickez sur la proposition de votre choix, puis clickez sur « valider ». 
+- clickez sur « Quitter la séance » afin de supprimer toute trace du vote sur votre navigateur 
