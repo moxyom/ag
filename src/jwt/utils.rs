@@ -1,19 +1,11 @@
-use std::time::{SystemTime, UNIX_EPOCH};
-
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 
 use crate::jwt::JwtData;
 
-pub fn sign(room_id: usize, admin: bool, secret: &Box<str>) -> String {
-    let exp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("system clock is before Unix epoch")
-        .as_secs() as usize
-        + 24 * 60 * 60;
-
+pub fn sign(jwt_data: &JwtData, secret: &Box<str>) -> String {
     jsonwebtoken::encode(
         &Header::default(),
-        &JwtData { room_id, admin, exp },
+        jwt_data,
         &EncodingKey::from_secret(secret.as_bytes()),
     )
     .expect("unable to encode token")

@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, atomic::Ordering};
 
 use axum::{
     body::Body,
@@ -13,7 +13,6 @@ use crate::{
     jwt::JwtData,
     packets::{ClientIn, ParsedMessage, parse},
     state::{AppState, RoomState},
-    utils::get_time_stamp,
 };
 
 static CLIENT_HTML: &[u8] = include_bytes!("../../frontend/dist/client/client.html.gz");
@@ -39,21 +38,22 @@ pub async fn client_ws(
 
     drop(rooms);
 
-    Ok(ws.on_upgrade(move |socket| handle_socket(socket, room_state_lock)))
+    #[cfg(debug_assertions)]
+    println!("WebSocket connection established for {}", jwt_data.id);
+
+    Ok(ws.on_upgrade(move |socket| handle_socket(socket, jwt_data.id, room_state_lock)))
 }
 
-async fn handle_socket(socket: WebSocket, room_state_lock: Arc<RwLock<RoomState>>) {
-    #[cfg(debug_assertions)]
-    println!("CLIENT ws connection establised");
-
-    let mut last_action_time_stamp = get_time_stamp();
-
+async fn handle_socket(
+    socket: WebSocket,
+    client_id: usize,
+    room_state_lock: Arc<RwLock<RoomState>>,
+) {
     let (sender, mut receiver) = socket.split();
 
     // register sender
-    let mut room_state = (*room_state_lock).write().await;
-    let client_id = room_state.next_client_id.increment();
-    room_state.client_senders.insert(client_id, sender);
+    let mut room_state = room_state_lock.write().await;
+    room_state.clients[client_id].sender = Some(sender);
     drop(room_state);
 
     while let Some(ress) = receiver.next().await {
@@ -84,17 +84,28 @@ async fn handle_socket(socket: WebSocket, room_state_lock: Arc<RwLock<RoomState>
         // register vote
         let room_state = room_state_lock.read().await;
 
-        // don't count vote if connection happend after vote post
-        if last_action_time_stamp > room_state.vote_post_time_stamp {
+        // compare last client vote to current vote
+        let current_vote_id = room_state
+            .room
+            .current_vote
+            .as_ref()
+            .map(|v| v.id)
+            .unwrap_or(0);
+        let client_state = &room_state.clients[client_id];
+
+        // set new user_last_vote_id and get the old value with atomic unicity
+        let user_last_vote_id = client_state
+            .last_vote_id
+            .swap(current_vote_id, Ordering::Relaxed);
+
+        // ignore if the vote has already been answered by client
+        if user_last_vote_id >= current_vote_id {
             continue;
         }
 
         room_state
             .room
             .vote_for(answer_in.vote_id, answer_in.answer_id);
-
-        // update last action
-        last_action_time_stamp = get_time_stamp();
     }
 
     #[cfg(debug_assertions)]
@@ -102,5 +113,5 @@ async fn handle_socket(socket: WebSocket, room_state_lock: Arc<RwLock<RoomState>
 
     // removing sender
     let mut room_state = (*room_state_lock).write().await;
-    room_state.client_senders.remove(&client_id);
+    room_state.clients[client_id].sender = None;
 }

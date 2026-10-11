@@ -6,7 +6,7 @@ use axum::{
     http::{StatusCode, header},
     response::Response,
 };
-use futures::StreamExt;
+use futures::{SinkExt, StreamExt};
 use tokio::{select, sync::RwLock, time::sleep};
 
 use crate::{
@@ -16,7 +16,6 @@ use crate::{
         encode_vote, parse, send,
     },
     state::{Answer, AppState, RoomState, Vote},
-    utils::get_time_stamp,
 };
 
 static ADMIN_HTML: &[u8] = include_bytes!("../../frontend/dist/admin/admin.html.gz");
@@ -34,7 +33,7 @@ pub async fn admin_ws(
     State(app_state): State<AppState>,
     jwt_data: JwtData,
 ) -> Result<Response, StatusCode> {
-    if !jwt_data.admin {
+    if !jwt_data.is_admin() {
         return Err(StatusCode::UNAUTHORIZED);
     }
 
@@ -65,30 +64,17 @@ async fn handle_socket(
     // send initial vote
     let room_state = room_state_lock.read().await;
     if let Some(current_vote) = &room_state.room.current_vote {
-        let ress = send(&mut sender, encode_vote(current_vote)).await;
-        if ress.is_err() {
-            return;
-        }
+        send(&mut sender, encode_vote(current_vote)).await;
     }
-
-    // send initial stats
-    let ress = send(&mut sender, encode_stats(&room_state.room)).await;
-    if ress.is_err() {
-        return;
-    }
-
-    // send initial inscription status
-    let ress = send(&mut sender, encode_incription_satus(room_state.joinable)).await;
-    if ress.is_err() {
-        return;
-    }
+    send(&mut sender, encode_stats(&room_state)).await;
+    send(&mut sender, encode_incription_satus(room_state.joinable)).await;
     drop(room_state);
 
     loop {
         select! {
             _ = sleep(Duration::from_millis(500)) => {
                 let room_state = room_state_lock.read().await;
-                let ress = send(&mut sender, encode_stats(&room_state.room)).await;
+                let ress = send(&mut sender, encode_stats(&room_state)).await;
                 if ress.is_err() {
                     #[cfg(debug_assertions)]
                     println!("ERROR: connot send stats");
@@ -118,13 +104,10 @@ async fn handle_socket(
                     ParsedMessage::Ping => continue,
                     ParsedMessage::ParseError => {
                         #[cfg(debug_assertions)]
-                        println!("format error expected NewVoteIn");
+                        println!("format error expected AdminIn");
                         continue;
                     }
                 };
-
-                #[cfg(debug_assertions)]
-                println!("ADMIN: receiving new action");
 
                 let mut room_state = room_state_lock.write().await;
                 match action {
@@ -140,8 +123,10 @@ async fn handle_socket(
                         rooms.remove(&room_id);
 
                         // send terminate to all
-                        room_state.send_to_clients(encode_terminate()).await;
-                        room_state.close_client_connections().await;
+                        room_state.for_each_client_sender(async |_, sender| {
+                            send(sender, encode_terminate()).await;
+                            sender.close().await;
+                        }).await;
                         break
                     }
                     AdminIn::NewVoteIn { title, answers } => {
@@ -150,14 +135,15 @@ async fn handle_socket(
                             answers.clone().into_iter().map(Answer::new).collect(),
                         );
 
-                        // set date
-                        room_state.vote_post_time_stamp = get_time_stamp();
-
-                        room_state.send_to_clients(encode_vote(&Vote {
+                        let encoded_vote = encode_vote(&Vote {
                             title,
                             answers: answers.into_iter().map(Answer::new).collect(),
                             id: vote_id,
-                        })).await;
+                        });
+
+                        room_state.for_each_client_sender(async move |_, sender| {
+                            send(sender, encoded_vote.clone()).await;
+                        }).await;
                     },
                 };
             }

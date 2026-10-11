@@ -1,30 +1,26 @@
 mod r#in;
 mod out;
 
-use futures::{SinkExt, StreamExt, stream};
+use axum::extract::ws::{Message, WebSocket};
+use futures::{
+    StreamExt,
+    stream::{self, SplitSink},
+};
 pub use r#in::*;
 pub use out::*;
 
 use crate::state::RoomState;
 
 impl RoomState {
-    pub async fn send_to_clients(&mut self, payload: serde_json::Value) {
-        stream::iter(self.client_senders.iter_mut())
-            .for_each_concurrent(32, |(client_id, sender)| async {
-                let ress = send(sender, payload.clone()).await;
-
-                #[cfg(debug_assertions)]
-                if ress.is_err() {
-                    println!("Error sending vote to client {}", *client_id)
+    pub async fn for_each_client_sender<F>(&mut self, f: F)
+    where
+        F: for<'a> AsyncFn(usize, &'a mut SplitSink<WebSocket, Message>),
+    {
+        stream::iter(self.clients.iter_mut().enumerate())
+            .for_each_concurrent(32, async |(client_id, client_state)| {
+                if let Some(sender) = &mut client_state.sender {
+                    f(client_id, sender).await;
                 }
-            })
-            .await;
-    }
-
-    pub async fn close_client_connections(&mut self) {
-        stream::iter(self.client_senders.iter_mut())
-            .for_each_concurrent(32, |(_, sender)| async {
-                let _ = sender.close().await;
             })
             .await;
     }

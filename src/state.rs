@@ -57,7 +57,7 @@ impl Room {
     pub fn set_current_vote(&mut self, title: Box<str>, answers: Vec<Answer>) -> usize {
         let vote_id = match &self.current_vote {
             Some(prev) => prev.id + 1,
-            None => 0,
+            None => 1,
         };
 
         self.current_vote = Some(Vote {
@@ -95,12 +95,24 @@ impl Room {
     }
 }
 
+pub struct ClientState {
+    pub sender: Option<SplitSink<WebSocket, Message>>,
+    pub last_vote_id: AtomicUsize,
+}
+
+impl ClientState {
+    pub fn new() -> Self {
+        Self {
+            sender: None,
+            last_vote_id: AtomicUsize::new(0),
+        }
+    }
+}
+
 pub struct RoomState {
     pub room: Room,
     pub joinable: bool,
-    pub client_senders: HashMap<usize, SplitSink<WebSocket, Message>>,
-    pub next_client_id: Counter,
-    pub vote_post_time_stamp: u128,
+    pub clients: Vec<ClientState>
 }
 
 impl RoomState {
@@ -108,9 +120,7 @@ impl RoomState {
         Self {
             room: Room::new(),
             joinable: true,
-            client_senders: HashMap::new(),
-            next_client_id: Counter::new(),
-            vote_post_time_stamp: 0,
+            clients: Vec::new(),
         }
     }
 }

@@ -2,7 +2,7 @@ use axum::extract::ws::{Message, WebSocket};
 use futures::{SinkExt, stream::SplitSink};
 use serde_json::json;
 
-use crate::state::{Room, Vote};
+use crate::state::{RoomState, Vote};
 
 pub fn encode_vote(vote: &Vote) -> serde_json::Value {
     json!({
@@ -12,8 +12,11 @@ pub fn encode_vote(vote: &Vote) -> serde_json::Value {
     })
 }
 
-pub fn encode_stats(room: &Room) -> serde_json::Value {
-    json!(room.get_current_stats())
+pub fn encode_stats(room_state: &RoomState) -> serde_json::Value {
+    json!({
+        "participantsCount": room_state.clients.len(),
+        "stats": room_state.room.get_current_stats(),
+    })
 }
 
 pub fn encode_terminate() -> serde_json::Value {
