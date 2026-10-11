@@ -124,8 +124,8 @@ async fn handle_socket(
 
                         // send terminate to all
                         room_state.for_each_client_sender(async |_, sender| {
-                            send(sender, encode_terminate()).await;
-                            sender.close().await;
+                            let _ = send(sender, encode_terminate()).await;
+                            let _ = sender.close().await;
                         }).await;
                         break
                     }
@@ -142,7 +142,7 @@ async fn handle_socket(
                         });
 
                         room_state.for_each_client_sender(async move |_, sender| {
-                            send(sender, encoded_vote.clone()).await;
+                            let _ = send(sender, encoded_vote.clone()).await;
                         }).await;
                     },
                 };

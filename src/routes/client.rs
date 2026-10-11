@@ -36,6 +36,10 @@ pub async fn client_ws(
 
     drop(rooms);
 
+    if jwt_data.is_admin() {
+        return Err(StatusCode::NOT_FOUND)
+    }
+
     #[cfg(debug_assertions)]
     println!("WebSocket connection established for {}", jwt_data.id);
 

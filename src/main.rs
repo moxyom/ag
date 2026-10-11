@@ -2,7 +2,6 @@ mod jwt;
 mod routes;
 mod state;
 mod packets;
-mod utils;
 
 use axum::{
     Router,

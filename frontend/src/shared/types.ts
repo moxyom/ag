@@ -12,3 +12,7 @@ export interface VoteClient {
     id: number
 }
 
+export interface Stats {
+    participantsCount: number,
+    stats: number[]
+}

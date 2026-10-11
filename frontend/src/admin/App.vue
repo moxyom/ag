@@ -1,8 +1,10 @@
 <template>
     <Layout>
         <Header :code="state.scene == 'room-created' ? state.roomId : null">
-            <InscriptionToggle v-if="state.scene == 'room-created'" :joinable="state.joinable"
-                @on-change="onRoomOpenChange" />
+            <div v-if="state.scene == 'room-created'">
+                <InscriptionToggle :joinable="state.joinable" @on-change="onRoomOpenChange" />
+                <p class="participant-count"><small>{{ state.participantsCount }} participants</small></p>
+            </div>
         </Header>
 
         <div v-if="state.scene == 'room-creation'" class="room-creation-scene">
@@ -28,7 +30,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref, watchEffect } from 'vue';
 import { wsConnectTo } from '../shared/ws';
-import type { VoteAdmin, VoteClient } from '../shared/types';
+import type { Stats, VoteAdmin, VoteClient } from '../shared/types';
 import Loading from '../shared/Loading.vue';
 import VoteInput from './VoteInput.vue';
 import VoteShow from './VoteShow.vue';
@@ -44,6 +46,7 @@ interface RoomCreatedState {
     roomId: number,
     joinable: boolean,
     currentVote: VoteAdmin | null,
+    participantsCount: number,
     onNewVote: boolean
     connecting: boolean,
     send: (response: any) => void
@@ -69,17 +72,19 @@ const createRoomCreatedState = (roomId: number): RoomCreatedState => {
         roomId,
         joinable: true,
         currentVote: null,
+        participantsCount: 0,
         onNewVote: true,
         connecting: true,
         send: () => { },
     })
 
-    const { status, send } = wsConnectTo("/admin-ws", (packet: VoteClient | number[] | { open: boolean }) => {
-        if (Array.isArray(packet)) {
+    const { status, send } = wsConnectTo("/admin-ws", (packet: VoteClient | Stats | { open: boolean }) => {
+        if ("participantsCount" in packet) {
+            state.participantsCount = packet.participantsCount
             if (!state.currentVote) return
 
             for (let k = 0; k < state.currentVote.answers.length; k++) {
-                state.currentVote.answers[k].votes = packet[k] || 0
+                state.currentVote.answers[k].votes = packet.stats[k] || 0
             }
         } else if ("open" in packet) {
             state.joinable = packet.open
@@ -163,5 +168,9 @@ const onTerminateClick = () => {
     align-items: center;
     justify-content: center;
     overflow-y: auto;
+}
+
+.participant-count {
+    text-align: end;
 }
 </style>
