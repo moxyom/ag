@@ -137,6 +137,11 @@ const onCreateRoomBtnClick = async () => {
 const createVote = (vote: Omit<VoteClient, "id">) => {
     if (state.value.scene != "room-created") return
     state.value.send(vote)
+
+    // automaticly close inscriptions
+    state.value.send({ open: false })
+    state.value.joinable = false 
+
     state.value.currentVote = {
         title: vote.title,
         answers: vote.answers.map(msg => ({ message: msg, votes: 0 }))
