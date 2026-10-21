@@ -16,6 +16,7 @@
             <div class="page">
                 <VoteInput v-if="state.onNewVote || !state.currentVote" @on-created="createVote"></VoteInput>
                 <div v-else>
+                    <p v-if="state.infoMessage.length > 0" class="info">{{ state.infoMessage }}</p>
                     <VoteShow :vote="state.currentVote"></VoteShow>
                     <button @click="onNewVoteClick">Nouveau vote</button>
                 </div>
@@ -49,6 +50,7 @@ interface RoomCreatedState {
     participantsCount: number,
     onNewVote: boolean
     connecting: boolean,
+    infoMessage: string,
     send: (response: any) => void
 }
 
@@ -75,6 +77,7 @@ const createRoomCreatedState = (roomId: number): RoomCreatedState => {
         participantsCount: 0,
         onNewVote: true,
         connecting: true,
+        infoMessage: "",
         send: () => { },
     })
 
@@ -140,7 +143,13 @@ const createVote = (vote: Omit<VoteClient, "id">) => {
 
     // automaticly close inscriptions
     state.value.send({ open: false })
-    state.value.joinable = false 
+    if (state.value.joinable) {
+        state.value.joinable = false 
+        state.value.infoMessage = "Inscription désactivée, vous pouvez la réactiviver manuellement en cliquant en haut à droite"
+        setTimeout(() => {
+            if (state.value.scene == "room-created") state.value.infoMessage = ""
+        }, 10000)
+    }
 
     state.value.currentVote = {
         title: vote.title,
@@ -177,5 +186,9 @@ const onTerminateClick = () => {
 
 .participant-count {
     text-align: end;
+}
+
+.info {
+    margin: 8px 0;
 }
 </style>
