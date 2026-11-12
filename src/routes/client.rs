@@ -66,7 +66,7 @@ async fn handle_socket(
     }
 
     // register sender
-    room_state.clients[client_id].sender = Some(sender);
+    let connection = room_state.clients[client_id].connect(sender);
     drop(room_state);
 
     while let Some(ress) = receiver.next().await {
@@ -121,5 +121,5 @@ async fn handle_socket(
 
     // removing sender
     let mut room_state = room_state_lock.write().await;
-    room_state.clients[client_id].sender = None;
+    room_state.clients[client_id].disconnect(connection);
 }

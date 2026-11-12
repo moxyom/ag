@@ -98,6 +98,8 @@ impl Room {
 pub struct ClientState {
     pub sender: Option<SplitSink<WebSocket, Message>>,
     pub last_vote_id: AtomicUsize,
+    /// number of the latest connection of this client, a reconnection can overlap the old one
+    pub connection: usize,
 }
 
 impl ClientState {
@@ -105,6 +107,21 @@ impl ClientState {
         Self {
             sender: None,
             last_vote_id: AtomicUsize::new(0),
+            connection: 0,
+        }
+    }
+
+    /// Registers a new connection and returns its number.
+    pub fn connect(&mut self, sender: SplitSink<WebSocket, Message>) -> usize {
+        self.connection += 1;
+        self.sender = Some(sender);
+        self.connection
+    }
+
+    /// Only the latest connection can unregister: an old one dying late must not remove the new one.
+    pub fn disconnect(&mut self, connection: usize) {
+        if self.connection == connection {
+            self.sender = None;
         }
     }
 }

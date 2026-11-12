@@ -1,7 +1,7 @@
 <template>
     <li class="answer" :style="{ '--pr': pr, '--pr-full': prFull }">
         <p ref="message">{{ message }}</p>
-        <p class="number">{{ votes }}</p>
+        <p ref="number" class="number">{{ votes }}<span v-if="totalVotes > 0" class="percent"> ({{ percent }}%)</span></p>
     </li>
 </template>
 
@@ -23,11 +23,20 @@ useResizeObserver(textRef, (entries) => {
     textWidth.value = width
 })
 
+const numberRef = useTemplateRef("number")
+const numberWidth = ref(8)
+useResizeObserver(numberRef, (entries) => {
+    numberWidth.value = entries[0].contentRect.width
+})
+
+const percent = computed(() => Math.round((props.votes / (props.totalVotes || 1)) * 100))
+
 const pr = computed(() => {
     const non0TotalVotes = props.totalVotes != 0 ? props.totalVotes : 1
     return `${(props.votes / non0TotalVotes) * 100}%`
 })
-const prFull = computed(() => `max(${pr.value}, ${textWidth.value + 32 + 8}px)`)
+// the bar is never shorter than the answer and the number side by side
+const prFull = computed(() => `max(${pr.value}, ${textWidth.value + numberWidth.value + 32 + 8}px)`)
 </script>
 
 <style scoped>
@@ -59,6 +68,7 @@ const prFull = computed(() => `max(${pr.value}, ${textWidth.value + 32 + 8}px)`)
 }
 
 .number {
+    white-space: nowrap;
     color: var(--color-primary);
     font-size: large;
     position: absolute;
@@ -66,5 +76,10 @@ const prFull = computed(() => `max(${pr.value}, ${textWidth.value + 32 + 8}px)`)
     right: calc(100% - var(--pr-full) + 8px);
     transform: translateY(-50%);
     transition: right 0.4s var(--cubic-bounce);
+}
+
+.percent {
+    font-size: medium;
+    opacity: 0.8;
 }
 </style>

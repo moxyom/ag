@@ -14,7 +14,9 @@ pub fn encode_vote(vote: &Vote) -> serde_json::Value {
 
 pub fn encode_stats(room_state: &RoomState) -> serde_json::Value {
     json!({
-        "participantsCount": room_state.clients.iter().filter(|o| o.sender.is_some()).count(),
+        // nombre de votants total
+        "participantsCount": room_state.clients.len(),
+        "onlineCount": room_state.clients.iter().filter(|o| o.sender.is_some()).count(),
         "stats": room_state.room.get_current_stats(),
     })
 }

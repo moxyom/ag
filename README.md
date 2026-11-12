@@ -41,3 +41,27 @@ la certitude qu'il sera supprimé au moment où vous fermerez votre navigateur.
 - Aller sur [ag.moxyom.com](https://ag.moxyom.com), rentrez le code de séance.
 - Lorsqu'un vote est soumis, clickez sur la proposition de votre choix, puis clickez sur « valider ». 
 - clickez sur « Quitter la séance » afin de supprimer toute trace du vote sur votre navigateur 
+
+## Installation
+
+Pour installer le projet, il faut avoir installé [Node.js](https://nodejs.org/en/) et [Rust](https://www.rust-lang.org/tools/install) sur votre machine.
+
+Pour lancer le projet en local, il faut d'abord installer les dépendances du frontend et le compiler, puis builder le backend et le lancer
+
+```bash
+# installer les dépendances du frontend
+cd frontend
+npm install
+# packager le frontend
+npm run build
+
+# builder et lancer le backend
+cd ../
+cargo build --release
+./target/release/assembly-poll
+
+# ou pour lancer le backend en mode debug
+cargo run
+```
+
+Ensuite, vous pouvez accéder au site sur [localhost:8080](http://localhost:8080) et à l'interface d'administration sur [localhost:8080/admin](http://localhost:8080/admin), de la même manière que sur le site en production.

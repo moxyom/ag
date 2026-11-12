@@ -14,5 +14,6 @@ export interface VoteClient {
 
 export interface Stats {
     participantsCount: number,
+    onlineCount: number,
     stats: number[]
 }

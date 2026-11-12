@@ -3,7 +3,10 @@
         <Header :code="state.scene == 'room-created' ? state.roomId : null">
             <div v-if="state.scene == 'room-created'">
                 <InscriptionToggle :joinable="state.joinable" @on-change="onRoomOpenChange" />
-                <p class="participant-count"><small>{{ state.participantsCount }} participants</small></p>
+                <p class="counts">
+                    <small class="online">{{ state.onlineCount }} en ligne</small>
+                    <small>{{ state.participantsCount }} au total</small>
+                </p>
             </div>
         </Header>
 
@@ -48,6 +51,7 @@ interface RoomCreatedState {
     joinable: boolean,
     currentVote: VoteAdmin | null,
     participantsCount: number,
+    onlineCount: number,
     onNewVote: boolean
     connecting: boolean,
     infoMessage: string,
@@ -75,6 +79,7 @@ const createRoomCreatedState = (roomId: number): RoomCreatedState => {
         joinable: true,
         currentVote: null,
         participantsCount: 0,
+        onlineCount: 0,
         onNewVote: true,
         connecting: true,
         infoMessage: "",
@@ -84,6 +89,7 @@ const createRoomCreatedState = (roomId: number): RoomCreatedState => {
     const { status, send } = wsConnectTo("/admin-ws", (packet: VoteClient | Stats | { open: boolean }) => {
         if ("participantsCount" in packet) {
             state.participantsCount = packet.participantsCount
+            state.onlineCount = packet.onlineCount
             if (!state.currentVote) return
 
             for (let k = 0; k < state.currentVote.answers.length; k++) {
@@ -184,8 +190,23 @@ const onTerminateClick = () => {
     overflow-y: auto;
 }
 
-.participant-count {
-    text-align: end;
+.counts {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin: 4px 0 0 0;
+    line-height: 1.2;
+}
+
+/* point vert pour le nombre de gens en ligne */
+.counts .online::before {
+    content: "";
+    display: inline-block;
+    width: 0.5em;
+    height: 0.5em;
+    margin-right: 0.4em;
+    border-radius: 50%;
+    background: rgb(8, 129, 8);
 }
 
 .info {
